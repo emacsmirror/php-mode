@@ -102,7 +102,7 @@
             (let ((tag (replace-regexp-in-string
                         (rx bos "v") ""
                         (shell-command-to-string "git describe --tags")))
-                  (pattern (rx (group (+ any)) eol)))
+                  (pattern (rx (group (+ nonl)) eol)))
               (if (string-match pattern tag)
                   (match-string 0 tag)
                 (error "Faild to obtain git tag"))))
