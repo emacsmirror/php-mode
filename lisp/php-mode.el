@@ -1185,13 +1185,19 @@ After setting the stylevars run hook `php-mode-STYLENAME-hook'."
   (setq-local comment-end "")
   (setq-local page-delimiter php-mode-page-delimiter)
 
-  (setq-local font-lock-string-face 'php-string)
-  (setq-local font-lock-keyword-face 'php-keyword)
-  (setq-local font-lock-builtin-face 'php-builtin)
-  (setq-local c-preprocessor-face-name 'php-php-tag)
-  (setq-local font-lock-function-name-face 'php-function-name)
-  (setq-local font-lock-variable-name-face 'php-variable-name)
-  (setq-local font-lock-constant-face 'php-constant)
+  (with-suppressed-warnings ((obsolete font-lock-string-face
+                                       font-lock-keyword-face
+                                       font-lock-builtin-face
+                                       font-lock-function-name-face
+                                       font-lock-variable-name-face
+                                       font-lock-constant-face))
+    (setq-local font-lock-string-face 'php-string)
+    (setq-local font-lock-keyword-face 'php-keyword)
+    (setq-local font-lock-builtin-face 'php-builtin)
+    (setq-local c-preprocessor-face-name 'php-php-tag)
+    (setq-local font-lock-function-name-face 'php-function-name)
+    (setq-local font-lock-variable-name-face 'php-variable-name)
+    (setq-local font-lock-constant-face 'php-constant))
 
   (setq-local syntax-propertize-function #'php-syntax-propertize-function)
   (add-hook 'syntax-propertize-extend-region-functions
