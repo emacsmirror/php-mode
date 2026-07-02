@@ -470,6 +470,12 @@ any) is a brace list.
 PHP does not have an C-like \"enum\" keyword."
   php nil)
 
+;; cc-mode renamed `c-after-brace-list-decl-kwds' to `c-after-enum-list-kwds';
+;; keep the old name defined so cc-langs' transitional lookup stays quiet where
+;; the rename landed (see `c-after-enum-list-key' in cc-langs.el).
+(c-lang-defconst c-after-brace-list-decl-kwds
+  php nil)
+
 (c-lang-defconst c-typeless-decl-kwds
   php (append (c-lang-const c-class-decl-kwds php) '("function" "const")))
 
