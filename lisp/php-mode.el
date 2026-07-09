@@ -1516,7 +1516,7 @@ for \\[find-tag] (which see)."
    ;;   already fontified by another pattern. Note that using OVERRIDE
    ;;   is usually overkill.
    `(
-     ("\\<\\(@\\)" 1 'php-errorcontrol-op)
+     (php-mode--error-control-op-font-lock-find 0 'php-errorcontrol-op t)
      ;; import function statement
      (,(rx symbol-start (group "use" (+ (syntax whitespace)) "function")
            (+ (syntax whitespace)))
@@ -1617,6 +1617,24 @@ The output will appear in the buffer *PHP*."
 
 (defconst php-string-interpolated-variable-regexp
   "{\\$[^}\n\\\\]*\\(?:\\\\.[^}\n\\\\]*\\)*}\\|\\${\\sw+}\\|\\$\\sw+")
+
+(defun php-mode--error-control-op-font-lock-find (limit)
+  "Font-lock matcher for the error-control operator `@' up to LIMIT.
+
+Match a single `@' that is used as the error-control operator, skipping
+occurrences inside strings or comments and the `@new' keyword (which CC
+Mode fontifies as a keyword).  CC Mode >= 31 fontifies a bare `@' as a
+keyword because `@new' is registered in `c-type-list-kwds', so this
+matcher is set to override that face."
+  (let (found)
+    (while (and (not found)
+                (re-search-forward "@" limit t))
+      (unless (or (php-in-string-or-comment-p)
+                  (save-excursion
+                    (goto-char (match-beginning 0))
+                    (looking-at-p "@new\\_>")))
+        (setq found t)))
+    found))
 
 (defun php-mode--string-interpolated-variable-font-lock-find (limit)
   "Apply text-property to LIMIT for string interpolation by font-lock."
