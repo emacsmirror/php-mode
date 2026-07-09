@@ -681,6 +681,57 @@ a backward search limit."
         (cons (point) t))))
    (t nil)))
 
+(defun php-mode--anonymous-function-brace-p (pos)
+  "Return non-nil when the opening brace at POS starts a closure body.
+
+POS must be the position of a `{'.  A closure is an anonymous
+`function (...) [use (...)] [: type] {' expression; named function
+declarations and other constructs (e.g. `match', `if') return nil."
+  (save-excursion
+    (goto-char pos)
+    (c-backward-syntactic-ws)
+    ;; Step back over an optional return type declaration `): Type {' so
+    ;; that point lands just after the parameter (or `use') list's `)'.
+    (unless (eq (char-before) ?\))
+      (let ((colon (save-excursion
+                     (skip-chars-backward "^):;{}(" (point-min))
+                     (and (eq (char-before) ?:) (1- (point))))))
+        (when colon
+          (goto-char colon)
+          (c-backward-syntactic-ws))))
+    ;; Walk backwards over the `)...(' list(s): the parameter list, plus an
+    ;; optional `use (...)' clause, until we reach `function' or give up.
+    (let ((result nil) (continue t))
+      (while (and continue (eq (char-before) ?\)))
+        (condition-case nil
+            (backward-list)
+          (error (setq continue nil)))
+        (when continue
+          (c-backward-syntactic-ws)
+          (if (zerop (c-backward-token-2))
+              (cond
+               ((looking-at-p "\\_<function\\_>") (setq result t continue nil))
+               ((looking-at-p "\\_<use\\_>") (c-backward-syntactic-ws))
+               (t (setq continue nil)))
+            (setq continue nil))))
+      result)))
+
+(defun php-c-looking-at-statement-block (orig-fun &rest args)
+  "Treat a closure body as a statement block around `c-looking-at-statement-block'.
+
+Emacs' CC Mode >= 31 (the change for bug#19867) fails to recognize an
+anonymous function body whose first line is a comment as a statement
+block, and reports it as a brace list, mis-indenting both the body and
+its closing brace.  When point is at the opening brace of such a closure,
+return non-nil; otherwise fall back to ORIG-FUN with ARGS.
+
+A closure body is always a statement block, so this is also correct on
+Emacs versions unaffected by the bug."
+  (or (and (derived-mode-p 'php-mode)
+           (eq (char-after) ?\{)
+           (php-mode--anonymous-function-brace-p (point)))
+      (apply orig-fun args)))
+
 (c-add-style
  "php"
  `((c-basic-offset . 4)
@@ -1256,6 +1307,9 @@ After setting the stylevars run hook `php-mode-STYLENAME-hook'."
 
   (advice-add 'c-looking-at-or-maybe-in-bracelist
               :around 'php-c-looking-at-or-maybe-in-bracelist)
+  (when (fboundp 'c-looking-at-statement-block)
+    (advice-add 'c-looking-at-statement-block
+                :around 'php-c-looking-at-statement-block))
   (advice-add 'fixup-whitespace :after #'php-mode--fixup-whitespace-after)
 
   (advice-add 'acm-backend-tabnine-candidate-expand
