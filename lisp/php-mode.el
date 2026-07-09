@@ -1629,7 +1629,10 @@ matcher is set to override that face."
   (let (found)
     (while (and (not found)
                 (re-search-forward "@" limit t))
-      (unless (or (php-in-string-or-comment-p)
+      ;; `php-in-string-or-comment-p' calls `syntax-ppss', which may run
+      ;; `syntax-propertize' and clobber the match data, so guard it to
+      ;; keep the `@' match for both the `@new' check below and font-lock.
+      (unless (or (save-match-data (php-in-string-or-comment-p))
                   (save-excursion
                     (goto-char (match-beginning 0))
                     (looking-at-p "@new\\_>")))
