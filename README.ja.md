@@ -75,6 +75,38 @@ M-x package-install php-mode
   (php-project-coding-style . psr2)))
 ```
 
+## HTMLとPHPが混在するファイルの編集
+
+`php-mode`は純粋なPHPスクリプトのためのメジャーモードです。テンプレートのようにHTMLの中にPHPを埋め込んだファイルは、両方の言語を理解するメジャーモードで編集するほうが適しています。特にインデントは、HTML部分を素の`php-mode`で編集すると正しく動作しません。
+
+そうしたファイルのために、PHP Modeは`php-html-template-major-mode`(既定は[`web-mode`](https://web-mode.org/))へ処理を委ねます。好みのモードを設定できます。
+
+```lisp
+(setopt php-html-template-major-mode 'web-mode)
+```
+
+### メジャーモードの選ばれ方
+
+拡張子`.php`のファイルは`php-mode-maybe`を通して開かれ、ファイル名と内容からメジャーモードが決まります。
+
+- `php-template-mode-alist`にマッチするファイル名(例: `.phtml`や`.blade.php`)は、対応するテンプレート用モードで開きます。
+- それ以外は、ディレクトリローカル変数`php-project-php-file-as-template`に従います。
+  - `auto`(既定): HTMLタグを含むファイルを`php-html-template-major-mode`に切り替えます。
+  - `t`: そのディレクトリのすべての`.php`ファイルをテンプレートとして扱います。
+  - `nil`: すべての`.php`ファイルを素のPHPスクリプトとして扱います。
+- いずれにも当てはまらない場合は`php-default-major-mode`(`php-mode`)で開きます。
+
+`php-project-php-file-as-template`は`.dir-locals.el`でプロジェクトごとに設定できます。
+
+```lisp
+((nil
+  (php-project-php-file-as-template . nil)))
+```
+
+### php-modeからの切り替え
+
+すでに`php-mode`でHTMLタグを含むファイルをインデントしようとすると、PHP Modeは警告し、`php-html-template-major-mode`への切り替えを尋ねます。このプロンプトを無効にするには`php-mode-warn-if-html-template`を`nil`に設定してください。
+
 ## 不具合を報告する
 
 バグ報告の際には `M-x php-mode-debug` の出力を含めてください。この情報は問題の再現に役立ちます。
