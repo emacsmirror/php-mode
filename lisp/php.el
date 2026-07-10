@@ -632,14 +632,27 @@ Look at the `php-executable' variable instead of the constant \"php\" command."
       (symbol-value php-re-detect-html-tag)
     php-re-detect-html-tag))
 
+(defvar-local php--buffer-has-html-tag-cache nil
+  "Memoized result of `php-buffer-has-html-tag'.
+A cons of (CHARS-MODIFIED-TICK . RESULT) so the scan is repeated only
+after the buffer text changes.")
+
 (defun php-buffer-has-html-tag ()
-  "Return position of HTML tag or NIL in current buffer."
-  (save-excursion
-    (save-restriction
-      (widen)
-      (goto-char (point-min))
-      (save-match-data
-        (re-search-forward (php-re-detect-html-tag) nil t)))))
+  "Return position of HTML tag or NIL in current buffer.
+The result is cached per buffer and recomputed only when the buffer text
+has changed, because this scans the whole buffer and is called on every
+indentation."
+  (let ((tick (buffer-chars-modified-tick)))
+    (if (eql (car php--buffer-has-html-tag-cache) tick)
+        (cdr php--buffer-has-html-tag-cache)
+      (let ((result (save-excursion
+                      (save-restriction
+                        (widen)
+                        (goto-char (point-min))
+                        (save-match-data
+                          (re-search-forward (php-re-detect-html-tag) nil t))))))
+        (setq php--buffer-has-html-tag-cache (cons tick result))
+        result))))
 
 (defun php-derivation-major-mode ()
   "Return major mode for PHP file by file-name and its content."
