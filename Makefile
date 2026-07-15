@@ -49,6 +49,7 @@ dev:
 # for an example of using a script like this with the 'git bisect run'
 # command.
 test: clean all
+	$(EASK) install polymode web-mode
 	$(EASK) test ert ./tests/php-mode-test.el
 
 .PHONY: all authors autoloads clean test

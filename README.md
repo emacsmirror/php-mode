@@ -77,6 +77,38 @@ You can add project-specific settings by creating a `.dir-locals.el` or `.dir-lo
   (php-project-coding-style . psr2)))
 ```
 
+## Editing files that mix HTML and PHP
+
+`php-mode` is designed for pure PHP scripts.  Files that embed PHP inside HTML, such as templates, are better edited in a major mode that understands both languages.  Indentation in particular is unreliable when the HTML part of a file is edited in plain `php-mode`.
+
+For such files, PHP Mode defers to `php-html-template-major-mode`, which defaults to [`web-mode`](https://web-mode.org/).  Set it to any mode you prefer:
+
+```lisp
+(setopt php-html-template-major-mode 'web-mode)
+```
+
+### How the major mode is chosen
+
+Files with a `.php` extension are opened through `php-mode-maybe`, which picks the major mode from the file name and its content:
+
+- File names matching `php-template-mode-alist` (for example `.phtml` and `.blade.php`) open in the matching template mode.
+- Otherwise the choice follows `php-project-php-file-as-template`, a directory-local variable:
+  - `auto` (default): switch to `php-html-template-major-mode` when the file contains an HTML tag.
+  - `t`: treat every `.php` file in the directory as a template.
+  - `nil`: treat every `.php` file as a plain PHP script.
+- When nothing else applies, the file opens in `php-default-major-mode` (`php-mode`).
+
+Set `php-project-php-file-as-template` per project in `.dir-locals.el`:
+
+```lisp
+((nil
+  (php-project-php-file-as-template . nil)))
+```
+
+### Switching away from php-mode
+
+If you are already in `php-mode` and indent a file that contains HTML tags, PHP Mode warns you and offers to switch to `php-html-template-major-mode`.  Set `php-mode-warn-if-html-template` to `nil` to turn off this prompt.
+
 ## Reporting Bugs
 
 When reporting a bug, please run `M-x php-mode-debug` and include its output in your bug report.  This helps us reproduce any issues you may be experiencing.

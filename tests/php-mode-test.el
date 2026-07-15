@@ -653,6 +653,52 @@ Meant for `php-mode-test-issue-503'."
   ;; Proper alignment arglist that contains empty lines.
   (with-php-mode-test ("indent/issue-793.php" :indent t :magic t)))
 
+(ert-deftest php-mode-test-poly-php-html-indentation ()
+  "Indentation must work inside PHP chunks of a PHP-in-HTML polymode.
+Regression: `php-check-html-for-indentation' returned nil in polymode
+buffers, which disabled indentation of the PHP chunks entirely.
+
+The innermode is defined here (mirroring the `poly-php' package) rather
+than depending on `poly-php', because that package pulls in a released
+`php-mode' from an archive that would shadow the one under test."
+  (skip-unless (require 'polymode nil t))
+  ;; `php-in-poly-php-html-mode' checks the `poly-php-html-mode' variable
+  ;; by name, so define the polymode under exactly that name.
+  (eval '(progn
+           (define-hostmode php-mode-test--poly-html-hostmode :mode 'html-mode)
+           (define-innermode php-mode-test--poly-php-innermode
+             :mode 'php-mode
+             :head-matcher "<\\?php\\|<\\?="
+             :tail-matcher "\\?>"
+             :head-mode 'host :tail-mode 'host)
+           (define-polymode poly-php-html-mode
+             :hostmode 'php-mode-test--poly-html-hostmode
+             :innermodes '(php-mode-test--poly-php-innermode)))
+        t)
+  (with-temp-buffer
+    (insert "<div>\n<?php\nif ($x) {\necho 'hello';\n}\n?>\n</div>\n")
+    (poly-php-html-mode)
+    (font-lock-ensure)
+    (goto-char (point-min))
+    (search-forward "echo 'hello';")
+    (beginning-of-line)
+    (indent-according-to-mode)
+    (should (= 4 (current-indentation)))))
+
+(ert-deftest php-mode-test-derive-html-template-major-mode ()
+  "A PHP file that contains HTML tags derives to `php-html-template-major-mode'."
+  (skip-unless (fboundp 'web-mode))
+  (let ((php-html-template-major-mode 'web-mode)
+        (php-project-php-file-as-template 'auto))
+    (with-temp-buffer
+      (setq buffer-file-name (expand-file-name "template.php" temporary-file-directory))
+      (unwind-protect
+          (progn
+            (insert "<div>\n<?php echo 'hi'; ?>\n</div>\n")
+            (should (eq 'web-mode (php-derivation-major-mode))))
+        (set-buffer-modified-p nil)
+        (setq buffer-file-name nil)))))
+
 (ert-deftest php-mode-test-php74 ()
   "Test highlighting language constructs added in PHP 7.4."
   (with-php-mode-test ("7.4/arrow-function.php" :faces t))
