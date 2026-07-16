@@ -180,6 +180,20 @@ a completion list."
   :tag "PHP Blade Template Major Mode"
   :type 'function)
 
+(defcustom php-blade-template-major-mode-fallback '(mhtml-mode html-mode)
+  "Major modes to fall back on for a Blade template.
+
+Used when `php-blade-template-major-mode' — `web-mode' by default — is
+not installed.  The first entry whose function is defined wins; when
+none is, `php-default-major-mode' is used.
+
+A Blade template is mostly HTML plus Blade's own directives, so an HTML
+mode reads it far better than `php-mode' does.  Set this to nil to opt
+out and get `php-default-major-mode' instead."
+  :group 'php
+  :tag "PHP Blade Template Major Mode Fallback"
+  :type '(repeat function))
+
 (defcustom php-template-mode-alist
   `(("\\.blade" . ,php-blade-template-major-mode)
     ("\\.phpt\\'" . ,(if (fboundp 'phpt-mode) 'phpt-mode php-default-major-mode))
@@ -623,6 +637,11 @@ indentation."
         (setq php--buffer-has-html-tag-cache (cons tick result))
         result))))
 
+(defun php--blade-template-fallback-mode ()
+  "Return the first available mode of `php-blade-template-major-mode-fallback'."
+  (cl-loop for mode in php-blade-template-major-mode-fallback
+           thereis (and (fboundp mode) mode)))
+
 (defun php-derivation-major-mode ()
   "Return major mode for PHP file by file-name and its content."
   (let ((mode (assoc-default buffer-file-name
@@ -638,10 +657,19 @@ indentation."
         (when (php-buffer-has-html-tag)
           (setq mode php-html-template-major-mode)))))
     (when (and mode (not (fboundp mode)))
-      (if (string-match-p "\\.blade\\." buffer-file-name)
-          (warn "php-mode is NOT support blade template. %s"
-                "Please install `web-mode' package")
-        (setq mode nil)))
+      ;; A Blade template is not PHP, so `php-default-major-mode' cannot
+      ;; read it at all; degrade to an HTML mode instead.  Every other
+      ;; template is PHP with HTML in it, and keeps falling back on
+      ;; `php-default-major-mode' below.
+      (setq mode (when (string-match-p "\\.blade\\." buffer-file-name)
+                   (let ((fallback (php--blade-template-fallback-mode)))
+                     (warn "`%s' is not available for this Blade template; %s.
+Install the `web-mode' package for full Blade support."
+                           mode
+                           (if fallback
+                               (format "using `%s' instead" fallback)
+                             (format "falling back on `%s'" php-default-major-mode)))
+                     fallback))))
     (or mode php-default-major-mode)))
 
 ;;;###autoload

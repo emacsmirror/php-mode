@@ -734,6 +734,55 @@ those going through `php-mode-maybe' did not: the same buffer became
           (set-buffer-modified-p nil)
           (setq buffer-file-name nil))))))
 
+(defun php-mode-test--derive (file-name &rest body-text)
+  "Return the mode `php-derivation-major-mode' picks for FILE-NAME.
+BODY-TEXT is inserted into the buffer first."
+  (with-temp-buffer
+    (setq buffer-file-name (expand-file-name file-name temporary-file-directory))
+    (unwind-protect
+        (progn
+          (apply #'insert body-text)
+          (php-derivation-major-mode))
+      (set-buffer-modified-p nil)
+      (setq buffer-file-name nil))))
+
+(ert-deftest php-mode-test-blade-template-fallback ()
+  "A Blade template degrades to an HTML mode when `web-mode' is missing.
+
+A `.blade.php' file is mostly HTML plus Blade directives, so it is not
+PHP and `php-default-major-mode' cannot read it.  Before the fallback
+existed, `php-derivation-major-mode' returned the unavailable
+`web-mode' anyway and `php-mode-maybe' then failed with
+`void-function'."
+  (let ((php-blade-template-major-mode 'php-mode-test--absent-web-mode)
+        (php-template-mode-alist '(("\\.blade" . php-mode-test--absent-web-mode))))
+    (should-not (fboundp 'php-mode-test--absent-web-mode))
+    ;; The chosen fallback must be usable: this is what `php-mode-maybe'
+    ;; funcalls, so an unavailable mode would signal `void-function'.
+    (let ((php-blade-template-major-mode-fallback '(html-mode)))
+      (should (eq 'html-mode (php-mode-test--derive "welcome.blade.php" "@extends('x')\n"))))
+    ;; Unavailable entries are skipped.
+    (let ((php-blade-template-major-mode-fallback '(php-mode-test--absent-web-mode html-mode)))
+      (should (eq 'html-mode (php-mode-test--derive "welcome.blade.php" "@extends('x')\n"))))
+    ;; Opting out falls back on `php-default-major-mode'.
+    (let ((php-blade-template-major-mode-fallback nil)
+          (php-default-major-mode 'php-mode))
+      (should (eq 'php-mode (php-mode-test--derive "welcome.blade.php" "@extends('x')\n"))))))
+
+(ert-deftest php-mode-test-html-template-fallback-unchanged ()
+  "A missing `php-html-template-major-mode' still derives to PHP.
+
+Only Blade degrades to an HTML mode.  `php-project-php-file-as-template'
+defaults to `auto', so any .php file holding an HTML tag reaches this
+path; sending those to an HTML mode would take most PHP files away from
+`php-mode' for anyone without `web-mode'."
+  (let ((php-html-template-major-mode 'php-mode-test--absent-web-mode)
+        (php-project-php-file-as-template 'auto)
+        (php-default-major-mode 'php-mode)
+        (php-template-mode-alist nil))
+    (should-not (fboundp 'php-mode-test--absent-web-mode))
+    (should (eq 'php-mode (php-mode-test--derive "page.php" "<div>\n<?php echo 'hi'; ?>\n</div>\n")))))
+
 (ert-deftest php-mode-test-php74 ()
   "Test highlighting language constructs added in PHP 7.4."
   (with-php-mode-test ("7.4/arrow-function.php" :faces t))
