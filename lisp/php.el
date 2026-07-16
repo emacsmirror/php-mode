@@ -38,29 +38,19 @@
   (require 'cl-lib))
 (require 'cc-engine)
 (require 'flymake)
+(require 'php-core)
 (require 'php-project)
 (require 'rx)
 
-;;;###autoload
-(defgroup php nil
-  "Language support for PHP."
-  :tag "PHP"
-  :group 'languages
-  :link '(url-link :tag "Official Site" "https://github.com/emacs-php/php-mode")
-  :link '(url-link :tag "PHP Mode Wiki" "https://github.com/emacs-php/php-mode/wiki"))
-
-(defcustom php-executable (or (executable-find "php") "php")
-  "The location of the PHP executable."
-  :tag "PHP Executable"
-  :type 'string)
-
 (defcustom php-phpdbg-executable (list "phpdbg")
   "The location of the PHPDBG executable."
+  :group 'php
   :tag "PHP PHPDBG Executable"
   :type '(repeat string))
 
 (defcustom php-php-parse-executabe nil
   "The location of the php-parse executable."
+  :group 'php
   :tag "PHP php-parse Executable"
   :type '(repeat string))
 
@@ -68,12 +58,14 @@
   "Default PHP.net site URL.
 
 The URL to use open PHP manual and search word."
+  :group 'php
   :tag "PHP Site URL"
   :type 'string)
 
 (defcustom php-manual-url 'en
   "URL at which to find PHP manual.
 You can replace \"en\" with your ISO language code."
+  :group 'php
   :tag "PHP Manual URL"
   :type '(choice (const  :tag "English" en)
                  (const  :tag "Brazilian Portuguese" pt_BR)
@@ -89,20 +81,24 @@ You can replace \"en\" with your ISO language code."
 
 (defcustom php-search-url nil
   "URL at which to search for documentation on a word."
+  :group 'php
   :tag "PHP Search URL"
   :type '(choice (string :tag "URL to search PHP documentation")
                  (const  :tag "Use `php-site-url' variable" nil)))
 
 (defcustom php-completion-file ""
   "Path to the file which contains the function names known to PHP."
+  :group 'php
   :type 'string)
 
 (defcustom php-manual-path ""
   "Path to the directory which contains the PHP manual."
+  :group 'php
   :type 'string)
 
 (defcustom php-search-documentation-function #'php-search-web-documentation
   "Function to search PHP Manual at cursor position."
+  :group 'php
   :tag "PHP Search Documentation Function"
   :type '(choice (const :tag "Use online documentation" php-search-web-documentation)
                  (const :tag "Use local documentation" php-local-manual-search)
@@ -113,6 +109,7 @@ You can replace \"en\" with your ISO language code."
 
 If non-nil, this shadows the value of `browse-url-browser-function' when
 calling `php-search-documentation' or `php-search-local-documentation'."
+  :group 'php
   :tag "PHP Search Documentation Browser Function"
   :type '(choice (const :tag "default" nil) function)
   :link '(variable-link browse-url-browser-function))
@@ -157,24 +154,29 @@ a completion list."
 
 (defcustom php-class-suffix-when-insert "::"
   "Suffix for inserted class."
+  :group 'php
   :type 'string)
 
 (defcustom php-namespace-suffix-when-insert "\\"
   "Suffix for inserted namespace."
+  :group 'php
   :type 'string)
 
 (defcustom php-default-major-mode 'php-mode
   "Major mode for editing PHP script."
+  :group 'php
   :tag "PHP Default Major Mode"
   :type 'function)
 
 (defcustom php-html-template-major-mode 'web-mode
   "Major mode for editing PHP-HTML template."
+  :group 'php
   :tag "PHP-HTML Template Major Mode"
   :type 'function)
 
 (defcustom php-blade-template-major-mode 'web-mode
   "Major mode for editing Blade template."
+  :group 'php
   :tag "PHP Blade Template Major Mode"
   :type 'function)
 
@@ -183,6 +185,7 @@ a completion list."
     ("\\.phpt\\'" . ,(if (fboundp 'phpt-mode) 'phpt-mode php-default-major-mode))
     ("\\.phtml\\'" . ,php-html-template-major-mode))
   "Automatically use another MAJOR-MODE when open template file."
+  :group 'php
   :tag "PHP Template Mode Alist"
   :type '(alist :key-type regexp :value-type function)
   :link '(url-link :tag "web-mode" "http://web-mode.org/")
@@ -190,11 +193,13 @@ a completion list."
 
 (defcustom php-mode-maybe-hook nil
   "List of functions to be executed on entry to `php-mode-maybe'."
+  :group 'php
   :tag "PHP Mode Maybe Hook"
   :type 'hook)
 
 (defcustom php-default-builtin-web-server-port 3939
   "Port number of PHP Built-in HTTP server (php -S)."
+  :group 'php
   :tag "PHP Default Built-in Web Server Port"
   :type 'integer
   :link '(url-link :tag "Built-in web server"
@@ -202,21 +207,25 @@ a completion list."
 
 (defcustom php-topsy-separator " > "
   "Separator string for `php-topsy-beginning-of-defun-with-class'."
+  :group 'php
   :tag "PHP Topsy Separator"
   :type 'string)
 
 (defcustom php-function-call 'php-function-call-traditional
   "Face name to use for method call."
+  :group 'php
   :tag "PHP Function Call"
   :type 'face)
 
 (defcustom php-method-call 'php-method-call-traditional
   "Face name to use for method call."
+  :group 'php
   :tag "PHP Method Call"
   :type 'face)
 
 (defcustom php-static-method-call 'php-static-method-call-traditional
   "Face name to use for method call."
+  :group 'php
   :tag "PHP Static Method Call"
   :type 'face)
 
@@ -239,26 +248,6 @@ see https://www.php.net/manual/language.constants.predefined.php")
                       "[" "]" "(" ")" "{" "}" ";")
                 t)))
 
-;;; Utillity for locate language construction
-(defsubst php-in-string-p ()
-  "Return non-nil if inside a string.
-It is the character that will terminate the string, or t if the string should
-be terminated by a generic string delimiter."
-  (nth 3 (syntax-ppss)))
-
-(defsubst php-in-comment-p ()
-  "Return NIL if outside a comment, T if inside a non-nestable comment, else
-an integer (the current comment nesting)."
-  (nth 4 (syntax-ppss)))
-
-(defsubst php-in-string-or-comment-p ()
-  "Return character address of start of comment or string; nil if not in one."
-  (nth 8 (syntax-ppss)))
-
-(defsubst php-in-poly-php-html-mode ()
-  "Return T if current buffer is in `poly-html-mode'."
-  (bound-and-true-p poly-php-html-mode))
-
 (defconst php-beginning-of-defun-regexp
   (eval-when-compile
     (rx bol
@@ -451,6 +440,7 @@ can be used to match against definitions for that classlike."
 
 (defcustom php-imenu-generic-expression 'php-imenu-generic-expression-default
   "Default Imenu generic expression for PHP Mode.  See `imenu-generic-expression'."
+  :group 'php
   :type '(choice (alist :key-type string :value-type (list string))
                  (const php-imenu-generic-expression-legacy)
                  (const php-imenu-generic-expression-simple)
@@ -599,6 +589,7 @@ Look at the `php-executable' variable instead of the constant \"php\" command."
 
 (defcustom php-re-detect-html-tag 'php-re-detect-html-tag-default
   "Regexp pattern variable-name of HTML detection."
+  :group 'php
   :tag "PHP Re Detect HTML Tag"
   :type '(choice (const :tag "Default pattern" php-re-detect-html-tag-default)
                  (const :tag "Aggressive pattern" php-re-detect-html-tag-aggressive)
@@ -652,14 +643,6 @@ indentation."
                 "Please install `web-mode' package")
         (setq mode nil)))
     (or mode php-default-major-mode)))
-
-;;;###autoload
-(define-derived-mode php-base-mode prog-mode "PHP"
-  "Generic major mode for editing PHP.
-
-This mode is intended to be inherited by concrete major modes.
-Currently there are `php-mode' and `php-ts-mode'."
-  nil)
 
 ;;;###autoload
 (defun php-mode-maybe ()

@@ -10,6 +10,7 @@
 (package-file "lisp/php-mode.el")
 (files
  "lisp/php.el"
+ "lisp/php-core.el"
  "lisp/php-complete.el"
  "lisp/php-defs.el"
  "lisp/php-indent.el"
