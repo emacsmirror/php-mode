@@ -12,6 +12,8 @@
  "lisp/php.el"
  "lisp/php-complete.el"
  "lisp/php-defs.el"
+ "lisp/php-indent.el"
+ "lisp/php-keywords.el"
  "lisp/php-face.el"
  "lisp/php-format.el"
  "lisp/php-project.el"
