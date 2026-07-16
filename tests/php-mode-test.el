@@ -803,6 +803,36 @@ path; sending those to an HTML mode would take most PHP files away from
   "Test highlighting language constructs added in PHP 8.4."
   (with-php-mode-test ("8.4/property-hooks.php" :faces t)))
 
+(defun php-mode-test--faces-of (code token)
+  "Return the list of faces on TOKEN's characters after fontifying CODE."
+  (with-temp-buffer
+    (insert code)
+    (php-mode)
+    (font-lock-ensure)
+    (goto-char (point-min))
+    (should (search-forward token nil t))
+    (let ((start (- (point) (length token))))
+      (mapcar (lambda (i) (get-text-property (+ start i) 'face))
+              (number-sequence 0 (1- (length token)))))))
+
+(ert-deftest php-mode-test-php85-pipe-op ()
+  "The PHP 8.5 pipe operator is fontified as `php-pipe-op'.
+
+Both characters must get the face.  The comparison-operator matcher
+claims a bare `>', so without a rule of its own `|>' came out
+half-fontified: the `|' plain and the `>' as `php-comparison-op'."
+  (should (equal '(php-pipe-op php-pipe-op)
+                 (php-mode-test--faces-of "<?php\n$slug = $title |> trim(...);\n" "|>")))
+  ;; Operators that the new rule must not steal from.
+  (dolist (probe '(("<?php\n$a = $b || $c;\n"    "||"  (php-logical-op php-logical-op))
+                   ("<?php\n$a = $b >= $c;\n"    ">="  (php-comparison-op php-comparison-op))
+                   ("<?php\n$a = $b > $c;\n"     ">"   (php-comparison-op))
+                   ("<?php\n$a = $b <=> $c;\n"   "<=>" (php-comparison-op php-comparison-op php-comparison-op))
+                   ("<?php\n$a = $b | $c;\n"     "|"   (nil))))
+    (cl-destructuring-bind (code token expected) probe
+      (should (equal (cons token expected)
+                     (cons token (php-mode-test--faces-of code token)))))))
+
 (ert-deftest php-mode-test-lang ()
   "Test highlighting for language constructs."
   (with-php-mode-test ("lang/class/anonymous-class.php" :indent t :magic t :faces t))
