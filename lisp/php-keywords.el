@@ -28,10 +28,11 @@
 ;; 367-609 as of the `php-cc-mode' freeze) into plain, cc-mode independent
 ;; `defconst' lists and pre-compiled `regexp-opt' regexps.
 ;;
-;; The purpose is to give the upcoming cc-free `php-mode' font-lock
-;; implementation (see lisp/php-mode.el, not yet written) a single source
-;; of truth for PHP keywords, without requiring `cc-mode', `cc-langs' or
-;; `cc-fonts'.
+;; The purpose is to give the upcoming cc-mode independent `php-mode'
+;; font-lock implementation a single source of truth for PHP keywords,
+;; without requiring `cc-mode', `cc-langs' or `cc-fonts'.  Nothing
+;; requires this file yet: the current `php-mode' still fontifies through
+;; CC Mode, so these tables have no effect until that work lands.
 ;;
 ;; Naming convention: for every category NAME there is
 ;;   - `php-keywords--NAME'      a list of keyword strings (lower-case)
@@ -48,17 +49,16 @@
 ;; `case-fold-search' to non-nil (or use `font-lock-defaults' with the
 ;; KEYWORDS-CASE-FOLD slot set to t) while matching against them.
 ;;
-;; Magic constants (`__LINE__' etc.) are the sole exception: by PHP
-;; convention they are always written in upper-case, and are therefore
-;; stored upper-case and are not meant to be matched case-insensitively.
-;; See `php-keywords--constants'.
+;; This file holds only the *syntactic* vocabulary of the language.  Out
+;; of scope, and deliberately not duplicated here:
 ;;
-;; This file intentionally does NOT duplicate lisp/php-defs.el, which
-;; holds the (large) table of built-in *function* names.  Predefined
-;; runtime constants other than `true'/`false'/`null' and the magic
-;; constants (e.g. `PHP_INT_MAX') are likewise out of scope here; only
-;; `PHP_EOL' is included below because it was explicitly called out in
-;; the implementation blueprint as a commonly fontified constant.
+;;   - built-in function names -- see lisp/php-defs.el;
+;;   - the magic constants (`__LINE__' and friends), which are written
+;;     upper-case and matched case-sensitively -- php.el owns that list
+;;     as `php-magical-constants', and both major modes build their
+;;     font-lock rule from it directly;
+;;   - predefined runtime constants such as `PHP_EOL' or `PHP_INT_MAX',
+;;     which are library symbols rather than language keywords.
 
 ;;; Code:
 
@@ -220,81 +220,26 @@ See the commentary in php-keywords.el for provenance.")
 Match against buffer text with `case-fold-search' bound to non-nil.")
 
 
-;;; 5. Language constants and magic constants
+;;; 5. Language constants
 ;;
-;; Source:
-;;   - `c-constant-kwds' -- "true" "false" "null" (case-insensitive
-;;     PHP language constants; stored lower-case here, same convention
-;;     as every other list in this file).
-;;   - php.el's existing `php-magical-constants' -- "__CLASS__"
-;;     "__DIR__" "__FILE__" "__FUNCTION__" "__LINE__" "__METHOD__"
-;;     "__NAMESPACE__" "__TRAIT__".  These are NOT re-derived from
-;;     php-cc-mode.el (they are not part of the 367-609 c-lang-defconst
-;;     block; php-cc-mode.el fontifies them by referring directly to
-;;     `php-magical-constants' from php.el, see the
-;;     `php-magical-constant' font-lock rule).  They are duplicated
-;;     into this file's `php-keywords--constants' so this module is
-;;     self-contained and does not need to `require' php.el; keep the
-;;     two lists in sync if `php-magical-constants' ever changes.
+;; Source: `c-constant-kwds' -- "true" "false" "null" (case-insensitive
+;; PHP language constants; stored lower-case here, same convention as
+;; every other list in this file).
 ;;
-;; Unlike every other category in this file, magic constants are
-;; conventionally written in upper-case only and are matched
-;; case-sensitively (that is how php-cc-mode.el's existing font-lock
-;; rule for `php-magical-constants' behaves).  "true"/"false"/"null"
-;; remain lower-case/case-insensitive like the rest of the file.
-;;
-;; Supplemented: "PHP_EOL", a predefined runtime constant (not a
-;; syntactic keyword) called out explicitly in the implementation
-;; blueprint (§6) as worth fontifying alongside the magic constants.
-;; It is the only predefined library constant included here -- the
-;; rest of PHP's predefined constants (PHP_INT_MAX, PHP_VERSION, ...)
-;; belong with built-in symbol tables such as lisp/php-defs.el, not in
-;; this "language keyword" module.
+;; The magic constants (`__CLASS__', `__LINE__', ...) are intentionally
+;; NOT mirrored here.  They are not part of php-cc-mode.el's 367-609
+;; c-lang-defconst block either: both major modes fontify them straight
+;; from php.el's `php-magical-constants', which stays the single source
+;; of truth for that list.
 (defconst php-keywords--constants
   '("true" "false" "null")
   "PHP literal keywords `true', `false' and `null' (case-insensitive).
-See `php-keywords--magic-constants' for the separate, case-sensitive
-upper-case magic constants (`__LINE__' and friends) and `PHP_EOL'.")
+The upper-case magic constants (`__LINE__' and friends) are matched
+case-sensitively and live in php.el's `php-magical-constants'.")
 
 (defconst php-keywords--constants-re
   (regexp-opt php-keywords--constants 'symbols)
   "`regexp-opt' of `php-keywords--constants', symbol-bounded.
-Match against buffer text with `case-fold-search' bound to non-nil.")
-
-(defconst php-keywords--magic-constants
-  '("__CLASS__" "__DIR__" "__FILE__" "__FUNCTION__" "__LINE__"
-    "__METHOD__" "__NAMESPACE__" "__TRAIT__" "PHP_EOL")
-  "PHP magic constants and `PHP_EOL', kept upper-case and matched
-case-sensitively (do NOT bind `case-fold-search' to non-nil when using
-`php-keywords--magic-constants-re').  Mirrors php.el's
-`php-magical-constants' plus \"PHP_EOL\"; see the commentary above.")
-
-(defconst php-keywords--magic-constants-re
-  (regexp-opt php-keywords--magic-constants 'symbols)
-  "`regexp-opt' of `php-keywords--magic-constants', symbol-bounded.
-Match case-sensitively (do not fold case).")
-
-
-;;; 6. Magic methods
-;;
-;; Source: none -- php-cc-mode.el's 367-609 `c-lang-defconst' block
-;; does not enumerate magic method names anywhere (grepped for
-;; "__construct", "__call", "__get", "__set", "magic" etc.: no hits).
-;; This whole category is supplemented from the PHP manual's list of
-;; magic methods (https://www.php.net/manual/language.oop5.magic.php),
-;; current through PHP 8.4.
-(defconst php-keywords--magic-methods
-  '("__call" "__callstatic" "__clone" "__construct" "__debuginfo"
-    "__destruct" "__get" "__invoke" "__isset" "__serialize" "__set"
-    "__set_state" "__sleep" "__tostring" "__unserialize" "__unset"
-    "__wakeup")
-  "PHP magic method names, stored lower-case (case-insensitive, like
-ordinary PHP identifiers). Supplemented in full; not derived from
-php-cc-mode.el, see the commentary above.")
-
-(defconst php-keywords--magic-methods-re
-  (regexp-opt php-keywords--magic-methods 'symbols)
-  "`regexp-opt' of `php-keywords--magic-methods', symbol-bounded.
 Match against buffer text with `case-fold-search' bound to non-nil.")
 
 (provide 'php-keywords)
