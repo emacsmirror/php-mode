@@ -40,7 +40,7 @@
 
 ;;; Code:
 
-(require 'php)
+(require 'php-core)
 
 ;;; Customization
 
