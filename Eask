@@ -16,11 +16,13 @@
  "lisp/php-indent.el"
  "lisp/php-keywords.el"
  "lisp/php-face.el"
+ "lisp/php-flymake.el"
  "lisp/php-format.el"
  "lisp/php-project.el"
  "lisp/php-local-manual.el"
  "lisp/php-ide-phpactor.el"
  "lisp/php-ide.el"
+ "lisp/php-align.el"
  "lisp/php-mode-debug.el")
 
 (script "test" "echo \"Error: no test specified\" && exit 1")
