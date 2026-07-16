@@ -699,6 +699,41 @@ than depending on `poly-php', because that package pulls in a released
         (set-buffer-modified-p nil)
         (setq buffer-file-name nil)))))
 
+(define-derived-mode php-mode-test--stub-ts-mode prog-mode "PHP/stub-ts"
+  "Stand-in for `php-ts-mode' in `php-mode-test-mode-remap'.
+Using a stub keeps the test independent of whether the PHP tree-sitter
+grammar is installed.")
+
+(ert-deftest php-mode-test-mode-remap ()
+  "`php-mode-maybe' must honor `major-mode-remap-alist'.
+
+Emacs's built-in `php-ts-mode' registers (php-mode . php-ts-mode) in
+`treesit-major-mode-remap-alist' so that users can toggle between this
+package and the core tree-sitter mode; `treesit-enabled-modes' copies
+that entry into `major-mode-remap-alist' when they opt in.
+
+`set-auto-mode' applies the remapping to whatever `auto-mode-alist'
+names, so file patterns pointing straight at `php-mode' honored it while
+those going through `php-mode-maybe' did not: the same buffer became
+`php-mode' for \".php\" but the remapped mode for \".stub\"."
+  (skip-unless (fboundp 'major-mode-remap))
+  (dolist (probe '((((php-mode . php-mode-test--stub-ts-mode))
+                    . php-mode-test--stub-ts-mode)
+                   ;; Without a remapping the derived mode is used as-is.
+                   (nil . php-mode)))
+    (let ((major-mode-remap-alist (car probe)))
+      (with-temp-buffer
+        ;; `php-derivation-major-mode' consults `buffer-file-name'.
+        (setq buffer-file-name (expand-file-name "remap.php" temporary-file-directory))
+        (unwind-protect
+            (progn
+              (insert "<?php\necho 'hi';\n")
+              (php-mode-maybe)
+              (should (equal (cons (car probe) (cdr probe))
+                             (cons (car probe) major-mode))))
+          (set-buffer-modified-p nil)
+          (setq buffer-file-name nil))))))
+
 (ert-deftest php-mode-test-php74 ()
   "Test highlighting language constructs added in PHP 7.4."
   (with-php-mode-test ("7.4/arrow-function.php" :faces t))

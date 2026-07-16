@@ -646,10 +646,17 @@ indentation."
 
 ;;;###autoload
 (defun php-mode-maybe ()
-  "Select PHP mode or other major mode."
+  "Select PHP mode or other major mode.
+
+The selected mode is resolved through `major-mode-remap-alist' the way
+`set-auto-mode' would have done had `auto-mode-alist' named it directly,
+so that a remapping the user asked for still applies.  Emacs's built-in
+`php-ts-mode' registers (php-mode . php-ts-mode) for exactly this
+purpose, and `treesit-enabled-modes' installs it when the user opts in."
   (interactive)
   (run-hooks php-mode-maybe-hook)
-  (funcall (php-derivation-major-mode)))
+  (let ((mode (php-derivation-major-mode)))
+    (funcall (if (fboundp 'major-mode-remap) (major-mode-remap mode) mode))))
 
 ;;;###autoload
 (defun php-current-class ()
