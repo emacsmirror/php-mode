@@ -75,6 +75,24 @@ M-x package-install php-mode
   (php-project-coding-style . psr2)))
 ```
 
+### `project.el`・Projectileとの連携
+
+`php-project-get-root-dir`は、まずPHP固有のマーカー（`.projectile`、`composer.json`/`composer.lock`、続いてVCSディレクトリ）を探索します。モノレポではパッケージ単位の`vendor/autoload.php`やコーディングスタイルが`php-mode`にとって重要なため、VCSルートより`composer.json`を優先します。これらのマーカーが見つからない場合は`project-current`にフォールバックするので、任意の[`project.el`](https://www.gnu.org/software/emacs/manual/html_node/emacs/Projects.html)バックエンドが検出に寄与できます。
+
+* **Projectile 3**は`projectile-mode`有効時に自身を`project-find-functions`へ登録するため、その検出結果が自動的に利用されます。従来の`php-project-use-projectile-to-detect-root`オプションはこのため廃止予定です。
+* Projectileなしでも`project-vc-extra-root-markers`（Emacs 29以降）で追加のルートマーカーを宣言できます。例えば`.dir-locals.el`に次のように記述します。
+
+  ```lisp
+  ((nil
+    (project-vc-extra-root-markers . ("composer.json"))))
+  ```
+
+逆に、PHP固有の検出（上記の`composer.json`優先ルール）をEglotや`project-find-file`などの`project.el`利用側に見せたい場合は、組み込みのVC検出を補完するだけになるよう、低い優先度で`php-project-project-find-function`を登録します。
+
+```lisp
+(add-hook 'project-find-functions #'php-project-project-find-function 90)
+```
+
 ## HTMLとPHPが混在するファイルの編集
 
 `php-mode`は純粋なPHPスクリプトのためのメジャーモードです。テンプレートのようにHTMLの中にPHPを埋め込んだファイルは、両方の言語を理解するメジャーモードで編集するほうが適しています。特にインデントは、HTML部分を素の`php-mode`で編集すると正しく動作しません。

@@ -4,11 +4,23 @@ All notable changes of the PHP Mode 1.19.1 release series are documented in this
 
 ## Unreleased
 
+### Added
+
+ * `php-project-get-root-dir` falls back to `project-current` when no PHP-specific marker is found, so `project.el` backends (Projectile 3, `project-vc-extra-root-markers`, etc.) can contribute project detection
+
 ### Changed
 
  * Add `readonly` class modifier to [Imenu] ([#802])
  * Add `enum` support to `php-current-class` ([#802])
  * Remove hardcoding of implicit paths in `php` that are not guaranteed to exist ([#803])
+
+### Fixed
+
+ * `php-project-project-find-function` now returns a `project.el` value valid on Emacs 28+; it previously built a `(vc . ROOT)` cons that broke the 3-element `(vc BACKEND ROOT)` representation and made `project-root` signal an error
+
+### Deprecated
+
+ * `php-project-use-projectile-to-detect-root` is obsolete; Projectile 3 registers itself on `project-find-functions`, which `php-project-get-root-dir` now consults automatically
 
 [Imenu]: https://www.gnu.org/software/emacs/manual/html_node/emacs/Imenu.html
 [#802]: https://github.com/emacs-php/php-mode/pull/802
