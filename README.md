@@ -77,6 +77,24 @@ You can add project-specific settings by creating a `.dir-locals.el` or `.dir-lo
   (php-project-coding-style . psr2)))
 ```
 
+### Integration with `project.el` and Projectile
+
+`php-project-get-root-dir` first looks for a PHP-specific marker (`.projectile`, `composer.json`/`composer.lock`, then a VCS directory).  Preferring `composer.json` over the VCS root matters in monorepos, where per-package `vendor/autoload.php` and coding styles are what `php-mode` cares about.  When none of those markers is found, it now falls back to `project-current`, so any [`project.el`](https://www.gnu.org/software/emacs/manual/html_node/emacs/Projects.html) backend can contribute detection:
+
+* **Projectile 3** registers itself on `project-find-functions` when `projectile-mode` is enabled, so its detection is picked up automatically.  The old `php-project-use-projectile-to-detect-root` option is therefore obsolete.
+* **Extra root markers** can be declared without Projectile via `project-vc-extra-root-markers` (Emacs 29+), for example in `.dir-locals.el`:
+
+  ```lisp
+  ((nil
+    (project-vc-extra-root-markers . ("composer.json"))))
+  ```
+
+Conversely, to expose PHP-specific detection (the `composer.json`-first precedence above) to `project.el` consumers such as Eglot or `project-find-file`, register `php-project-project-find-function` with a low priority so it only supplements the built-in VC detection:
+
+```lisp
+(add-hook 'project-find-functions #'php-project-project-find-function 90)
+```
+
 ## Editing files that mix HTML and PHP
 
 `php-mode` is designed for pure PHP scripts.  Files that embed PHP inside HTML, such as templates, are better edited in a major mode that understands both languages.  Indentation in particular is unreliable when the HTML part of a file is edited in plain `php-mode`.
